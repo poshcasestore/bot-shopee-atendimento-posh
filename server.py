@@ -59,7 +59,6 @@ def generate_shopee_signature(url_path, access_token, shop_id, partner_id, times
     h = hmac.new(secret_key, base_string.encode('utf-8'), hashlib.sha256)
     return h.hexdigest()
 
-
 def get_access_token(shop_id):
     """
     Função mock para obter o access_token.
@@ -74,7 +73,6 @@ def get_access_token(shop_id):
         f"{shop_id}. Implemente o fluxo OAuth 2.0 para obter um token real."
     )
     return "SEU_ACCESS_TOKEN_REAL_AQUI"   # <--- Substitua por um token real obtido via OAuth
-
 
 def reply_shopee_message(shop_id, conversation_id, message_content):
     """Envia uma resposta para a Shopee API."""
@@ -127,7 +125,6 @@ def reply_shopee_message(shop_id, conversation_id, message_content):
         )
         return False
 
-
 def mark_shopee_message_unread(shop_id, conversation_id):
     """Marca uma conversa como não lida na Shopee API."""
     url_path = "/api/v2/message/mark_message_unread"
@@ -177,7 +174,6 @@ def mark_shopee_message_unread(shop_id, conversation_id):
         )
         return False
 
-
 # -------------------------------------------------
 # Endpoints da API (rotas do Flask)
 # -------------------------------------------------
@@ -188,7 +184,6 @@ def home():
     """Retorna uma mensagem simples para indicar que o bot está online."""
     return "Bot Shopee Atendimento Posh está online!", 200
 
-
 @app.route('/shopee/webhook', methods=['GET', 'POST'])
 def shopee_webhook():
     """Endpoint para receber webhooks de mensagens da Shopee."""
@@ -198,7 +193,6 @@ def shopee_webhook():
         return "Webhook URL verified", 200
 
     # Se for POST, processa o webhook real
-    # Tenta ler o JSON, mesmo que o Content-Type não esteja perfeito
     data = request.get_json(force=True, silent=True)
 
     if not data:
@@ -207,6 +201,13 @@ def shopee_webhook():
         return jsonify({"message": "Payload inválido ou vazio"}), 400
 
     print(f"Webhook da Shopee recebido: {json.dumps(data, indent=2)}")
+
+    # --- INÍCIO DA CORREÇÃO ---
+    # Verifica se é um payload de verificação da Shopee
+    if data.get('data', {}).get('verify_info'):
+        print("✅ Payload de verificação da Shopee recebido. Respondendo com 200 OK.")
+        return jsonify({"message": "Webhook verificado com sucesso"}), 200
+    # --- FIM DA CORREÇÃO ---
 
     # -------------------------------------------------
     # Verifica a assinatura do webhook (opcional – importante em produção)
@@ -238,6 +239,8 @@ def shopee_webhook():
         # -------------------------------------------------
         # Verifica se a conversa já foi encaminhada para atendimento humano
         # -------------------------------------------------
+        # CORREÇÃO: A variável CONVERSA_ENCAMINHADA_HUMANO é um dicionário,
+        # então precisamos passar o sessao_id como chave.
         if CONVERSA_ENCAMINHADA_HUMANO.get(sessao_id, False):
             # Se já foi encaminhada, o bot não responde mais, apenas marca como não lida
             print(f"Conversa {sessao_id} já encaminhada para humano. Marcando como não lida.")
@@ -247,22 +250,23 @@ def shopee_webhook():
         # -------------------------------------------------
         # Processa a mensagem com a lógica do seu bot
         # -------------------------------------------------
-        resposta_bot = assistente_virtual_bot(sessao_id, message_content)
+        # CORREÇÃO: A função assistente_virtual_bot agora aceita apenas user_input.
+        # A lógica de sessão é gerenciada internamente pelo bot_logic.py.
+        resposta_bot = assistente_virtual_bot(message_content)
         print(f"Resposta do bot para {sessao_id}: {resposta_bot}")
 
         # Envia a resposta de volta para a Shopee
-        reply_shopee_message(shop_id, conversation_id, resposta_bot)
+        if resposta_bot: # Só envia se houver uma resposta do bot
+            reply_shopee_message(shop_id, conversation_id, resposta_bot)
 
         # -------------------------------------------------
         # Verifica se a resposta do bot indica transferência para humano
         # -------------------------------------------------
-        if (
-            "atendente humano vai assumir" in resposta_bot.lower()
-            and "vou deixar seu elogio registrado e encaminhar para que um atendente humano possa te responder pessoalmente"
-            not in resposta_bot.lower()
-        ):
+        # CORREÇÃO: A lógica de transferência para humano deve ser baseada no estado global
+        # CONVERSA_ENCAMINHADA_HUMANO que é atualizado dentro de bot_logic.py.
+        # Não precisamos mais verificar a frase na resposta do bot aqui.
+        if CONVERSA_ENCAMINHADA_HUMANO.get(sessao_id, False):
             print(f"Bot indicou transferência para humano na sessão {sessao_id}. Marcando como não lida.")
-            CONVERSA_ENCAMINHADA_HUMANO[sessao_id] = True   # Marca a sessão como transferida
             mark_shopee_message_unread(shop_id, conversation_id)   # Marca a conversa como não lida
 
         return jsonify({"message": "Mensagem processada com sucesso"}), 200
@@ -271,7 +275,6 @@ def shopee_webhook():
         print(f"❌ Erro ao processar webhook da Shopee: {e}")
         # Retorna um erro 500 para outros tipos de exceção
         return jsonify({"message": "Erro interno do servidor"}), 500
-
 
 @app.route('/oauth/callback', methods=['GET'])
 def oauth_callback():
@@ -284,7 +287,7 @@ def oauth_callback():
     print(f"OAuth Callback recebido: code={code}, shop_id={shop_id}")
 
     if code and shop_id:
-        # TODO: Implementar a troca do 'code' por 'access_token' e 'refresh_token'
+        # TODO: Implementar a lógica de troca de código OAuth por tokens reais aqui!
         # e armazená‑los de forma persistente (ex: em SHOP_TOKENS ou DB).
         # Este é um passo CRÍTICO para a autenticação real.
         print(
