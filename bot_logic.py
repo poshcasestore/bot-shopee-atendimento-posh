@@ -556,10 +556,10 @@ def processar_duvidas_informacoes(sessao_id, user_input):
 
     return "Desculpe, não entendi. Por favor, digite 'Voltar' para o menu principal."
 
-def assistente_virtual_bot(sessao_id, user_input):
+def processar_mensagem_shopee(sessao_id, user_input):
     """
-    Função principal para processar mensagens da assistente virtual,
-    agora gerenciando o estado da sessão.
+    Função principal para processar mensagens da Shopee, gerenciando o estado da sessão.
+    Retorna a resposta do bot e um booleano indicando se a conversa foi encaminhada para humano.
     """
     sessao = get_sessao_estado(sessao_id)
     MEMORIA_USUARIO = sessao['MEMORIA_USUARIO']
@@ -570,16 +570,13 @@ def assistente_virtual_bot(sessao_id, user_input):
 
     user_input_lower = user_input.lower().strip()
     resposta_bot = None
+    encaminhado_humano_final = False # Flag para retornar se a conversa foi encaminhada
 
     # --- Lógica de Início de Conversa ---
     if not PRIMEIRA_MENSAGEM_RECEBIDA:
         sessao['PRIMEIRA_MENSAGEM_RECEBIDA'] = True
         resposta_bot = exibir_saudacao_inicial() + "\n" + exibir_menu_principal()
-        # Atualiza o estado da sessão
-        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-        return resposta_bot
+        return resposta_bot, encaminhado_humano_final
 
     # --- Lógica de Atendimento Humano ---
     if ATENDIMENTO_HUMANO_ATIVO:
@@ -588,11 +585,7 @@ def assistente_virtual_bot(sessao_id, user_input):
             sessao['ATENDIMENTO_HUMANO_ATIVO'] = False
             sessao['CONVERSA_ENCAMINHADA_HUMANO'] = False
             sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = datetime.datetime.now() # Marca o tempo da finalização
-            # Atualiza o estado da sessão
-            sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-            return None # A assistente não responde, apenas desativa o modo humano
+            return None, False # A assistente não responde, apenas desativa o modo humano
 
         # Se o cliente quer cancelar o atendimento humano
         if user_input_lower == 'cancelar atendimento humano':
@@ -600,21 +593,16 @@ def assistente_virtual_bot(sessao_id, user_input):
             sessao['CONVERSA_ENCAMINHADA_HUMANO'] = False
             sessao['MEMORIA_USUARIO'] = {} # Limpa a memória para recomeçar com a assistente
             resposta_bot = get_resposta_regra("CANCELAR_ATENDIMENTO_HUMANO") + "\n" + exibir_menu_principal()
-            # Atualiza o estado da sessão
-            sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-            return resposta_bot
+            return resposta_bot, False
 
         # Se a conversa foi encaminhada e o atendente humano ainda não finalizou,
         # a assistente fica em modo de espera total, não respondendo proativamente.
         # O bot não deve responder nada aqui, pois o atendente está no controle.
         if CONVERSA_ENCAMINHADA_HUMANO:
-            # Atualiza o estado da sessão
-            sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-            return None # O bot fica em silêncio, esperando o humano ou o cancelamento
+            # Não responde, pois o humano está no controle.
+            # Se a Shopee exige uma resposta 200 OK, o server.py já faz isso.
+            # O bot_logic não precisa gerar uma resposta de texto aqui.
+            return None, True # Retorna True para indicar que ainda está encaminhado
 
     # --- Retomada da Assistente Virtual após 24h de inatividade do atendente humano ---
     # Esta lógica só se aplica se o atendimento humano foi finalizado (ULTIMA_INTERACAO_ATENDENTE_HUMANO não é None)
@@ -635,11 +623,8 @@ def assistente_virtual_bot(sessao_id, user_input):
         sessao['CONVERSA_ENCAMINHADA_HUMANO'] = True # Marca que a conversa foi encaminhada
         sessao['MEMORIA_USUARIO'] = {} # Limpa a memória para o atendente humano
         resposta_bot = get_resposta_regra("TRANSFERENCIA_OFERECER")
-        # Atualiza o estado da sessão
-        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-        return resposta_bot
+        encaminhado_humano_final = True
+        return resposta_bot, encaminhado_humano_final
 
     # --- Processamento de Opções Pós-Conclusão de Fluxo (Novo) ---
     # Este bloco deve vir ANTES do processamento de fluxos ativos e do menu principal
@@ -655,11 +640,7 @@ def assistente_virtual_bot(sessao_id, user_input):
             resposta_bot = ("Desculpe, não entendi sua escolha. Por favor, selecione uma das opções numeradas:\n"
                     "1 - Voltar ao menu principal\n"
                     "2 - Sair do atendimento")
-        # Atualiza o estado da sessão
-        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-        return resposta_bot
+        return resposta_bot, encaminhado_humano_final
 
     if MEMORIA_USUARIO.get('last_action_completed') == 'personalizacao_foto_concluida':
         if user_input_lower == '1': # Voltar ao menu principal
@@ -673,11 +654,7 @@ def assistente_virtual_bot(sessao_id, user_input):
             resposta_bot = ("Desculpe, não entendi sua escolha. Por favor, selecione uma das opções numeradas:\n"
                     "1 - Voltar ao menu principal\n"
                     "2 - Sair do atendimento")
-        # Atualiza o estado da sessão
-        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-        return resposta_bot
+        return resposta_bot, encaminhado_humano_final
 
     # --- Processamento de Fluxos Ativos ---
     # Se o estado 'last_flow_options' está definido e o input é '1' ou '2',
@@ -692,11 +669,7 @@ def assistente_virtual_bot(sessao_id, user_input):
             resposta_bot = get_resposta_regra("SAIR_ATENDIMENTO")
         else:
             resposta_bot = processar_devolucao_reembolso(sessao_id, user_input) # Reprocessa para exibir as opções novamente
-        # Atualiza o estado da sessão
-        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
-        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
-        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
-        return resposta_bot
+        return resposta_bot, encaminhado_humano_final
 
     if 'personalizacao_nome_estado' in MEMORIA_USUARIO:
         resposta_bot = processar_personalizacao_nome(sessao_id, user_input)
@@ -704,6 +677,8 @@ def assistente_virtual_bot(sessao_id, user_input):
         resposta_bot = processar_personalizacao_foto(sessao_id, user_input)
     elif 'consulta_capinha_estado' in MEMORIA_USUARIO:
         resposta_bot = processar_consulta_capinha(sessao_id, user_input)
+        if sessao['CONVERSA_ENCAMINHADA_HUMANO']: # Verifica se a consulta encaminhou para humano
+            encaminhado_humano_final = True
     elif 'duvidas_estado' in MEMORIA_USUARIO:
         resposta_bot = processar_duvidas_informacoes(sessao_id, user_input)
     else:
@@ -718,6 +693,8 @@ def assistente_virtual_bot(sessao_id, user_input):
             resposta_bot = processar_personalizacao_foto(sessao_id, user_input)
         elif user_input_lower == '3':
             resposta_bot = processar_consulta_capinha(sessao_id, user_input)
+            if sessao['CONVERSA_ENCAMINHADA_HUMANO']:
+                encaminhado_humano_final = True
         elif user_input_lower == '4':
             # Define o last_flow_options ANTES de chamar a função
             MEMORIA_USUARIO['last_flow_options'] = 'devolucao_reembolso'
@@ -769,7 +746,7 @@ def assistente_virtual_bot(sessao_id, user_input):
     sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
     sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
 
-    return resposta_bot
+    return resposta_bot, encaminhado_humano_final
 
 # --- Simulação de Interação (para testes) ---
 if __name__ == "__main__":
@@ -779,11 +756,11 @@ if __name__ == "__main__":
     while True:
         user_input = input("Você: ")
         if user_input.lower() == 'sair':
-            response = assistente_virtual_bot(test_sessao_id, user_input)
+            response, _ = processar_mensagem_shopee(test_sessao_id, user_input)
             if response:
                 print(f"Assistente Virtual: {response}")
             break
-        response = assistente_virtual_bot(test_sessao_id, user_input)
+        response, _ = processar_mensagem_shopee(test_sessao_id, user_input)
         if response is not None: # A assistente só responde se não estiver em modo de espera total
             print(f"Assistente Virtual: {response}")
             if "Tenha um ótimo dia!" in response:
