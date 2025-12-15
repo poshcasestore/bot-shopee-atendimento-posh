@@ -25,7 +25,7 @@ load_dotenv()
 # ATENÇÃO: O arquivo que contém a lógica do bot foi ajustado para **bot_v14.py**
 # Se você já renomeou seu arquivo para `bot_logic.py`, ajuste o import abaixo
 # para `from bot_logic import (...)`
-from bot_logic import (  # <-- ATENÇÃO: Verifique se o nome do seu arquivo é `bot_logic.py` ou `bot_logic.py`
+from bot_v14 import (  # <-- ATENÇÃO: Verifique se o nome do seu arquivo é `bot_v14.py` ou `bot_logic.py`
     assistente_virtual_bot,
     ATENDIMENTO_HUMANO_ATIVO,
     CONVERSA_ENCAMINHADA_HUMANO,
@@ -200,7 +200,14 @@ def shopee_webhook():
         return "Webhook URL verified", 200
 
     # Se for POST, processa o webhook real
-    data = request.json
+    # Tenta ler o JSON, mesmo que o Content-Type não esteja perfeito
+    data = request.get_json(force=True, silent=True)
+
+    if not data:
+        print("❌ Payload vazio ou não-JSON válido recebido no webhook POST.")
+        # Retorna um erro 400 Bad Request se o payload não for JSON válido
+        return jsonify({"message": "Payload inválido ou vazio"}), 400
+
     print(f"Webhook da Shopee recebido: {json.dumps(data, indent=2)}")
 
     # -------------------------------------------------
@@ -213,7 +220,8 @@ def shopee_webhook():
     # -------------------------------------------------
     try:
         shop_id = data.get('shop_id')
-        message_data = data.get('data', {}).get('message')
+        # Usar .get com fallback para dicionário vazio para evitar NoneType
+        message_data = data.get('data', {}).get('message', {})
         conversation_id = message_data.get('conversation_id')
         sender_id = message_data.get('from_user_id')          # ID do cliente
         message_content = message_data.get('content', {}).get('text', '')
@@ -263,6 +271,7 @@ def shopee_webhook():
 
     except Exception as e:
         print(f"❌ Erro ao processar webhook da Shopee: {e}")
+        # Retorna um erro 500 para outros tipos de exceção
         return jsonify({"message": "Erro interno do servidor"}), 500
 
 
@@ -289,5 +298,4 @@ def oauth_callback():
         ), 200
     else:
         return "OAuth Callback: Parâmetros 'code' ou 'shop_id' ausentes.", 400
-
 
