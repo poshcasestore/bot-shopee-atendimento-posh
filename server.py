@@ -23,10 +23,10 @@ load_dotenv()
 # Importa a lógica principal do seu bot
 # -------------------------------------------------
 # CORREÇÃO: O arquivo de lógica do bot foi ajustado para **bot_logic.py**
-from bot_logic import (  # <-- LINHA CORRIGIDA AQUI!
-    assistente_virtual_bot,
-    ATENDIMENTO_HUMANO_ATIVO,
-    CONVERSA_ENCAMINHADA_HUMANO,
+from bot_logic import (
+    assistente_virtual_bot, # <-- Esta função precisa ser ajustada para receber sessao_id e user_input
+    ATENDIMENTO_HUMANO_ATIVO, # <-- Estas variáveis globais precisam ser gerenciadas por sessão
+    CONVERSA_ENCAMINHADA_HUMANO, # <-- Estas variáveis globais precisam ser gerenciadas por sessão
     get_resposta_regra,
 )
 
@@ -72,7 +72,10 @@ def get_access_token(shop_id):
         "⚠️ ATENÇÃO: Usando access_token placeholder para shop_id "
         f"{shop_id}. Implemente o fluxo OAuth 2.0 para obter um token real."
     )
-    return "SEU_ACCESS_TOKEN_REAL_AQUI"   # <--- Substitua por um token real obtido via OAuth
+    # --- IMPORTANTE: Substitua isso pelo seu token real obtido via OAuth ---
+    # Se você ainda não implementou o OAuth, pode usar um token de teste temporário aqui,
+    # mas ele expirará.
+    return os.getenv('SHOPEE_ACCESS_TOKEN_PLACEHOLDER', "SEU_ACCESS_TOKEN_REAL_AQUI")
 
 def reply_shopee_message(shop_id, conversation_id, message_content):
     """Envia uma resposta para a Shopee API."""
@@ -193,6 +196,7 @@ def shopee_webhook():
         return "Webhook URL verified", 200
 
     # Se for POST, processa o webhook real
+    # Tenta ler o JSON, mesmo que o Content-Type não esteja perfeito
     data = request.get_json(force=True, silent=True)
 
     if not data:
@@ -202,12 +206,12 @@ def shopee_webhook():
 
     print(f"Webhook da Shopee recebido: {json.dumps(data, indent=2)}")
 
-    # --- INÍCIO DA CORREÇÃO ---
+    # --- INÍCIO DA CORREÇÃO CRÍTICA PARA VERIFICAÇÃO DA SHOPEE ---
     # Verifica se é um payload de verificação da Shopee
     if data.get('data', {}).get('verify_info'):
         print("✅ Payload de verificação da Shopee recebido. Respondendo com 200 OK.")
         return jsonify({"message": "Webhook verificado com sucesso"}), 200
-    # --- FIM DA CORREÇÃO ---
+    # --- FIM DA CORREÇÃO CRÍTICA ---
 
     # -------------------------------------------------
     # Verifica a assinatura do webhook (opcional – importante em produção)
@@ -252,7 +256,11 @@ def shopee_webhook():
         # -------------------------------------------------
         # CORREÇÃO: A função assistente_virtual_bot agora aceita apenas user_input.
         # A lógica de sessão é gerenciada internamente pelo bot_logic.py.
-        resposta_bot = assistente_virtual_bot(message_content)
+        # Mas como você ainda está usando variáveis globais no bot_logic.py,
+        # vamos manter a chamada com sessao_id e user_input por enquanto,
+        # e faremos a correção do bot_logic.py para gerenciar o estado por sessão.
+        resposta_bot = assistente_virtual_bot(sessao_id, message_content) # <-- MANTIDO POR ENQUANTO, SERÁ AJUSTADO COM bot_logic.py
+
         print(f"Resposta do bot para {sessao_id}: {resposta_bot}")
 
         # Envia a resposta de volta para a Shopee
