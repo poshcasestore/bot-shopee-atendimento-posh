@@ -3,16 +3,28 @@ import random
 import re
 import os
 
-# --- Variáveis Globais e de Estado ---
-ATENDIMENTO_HUMANO_ATIVO = False
-PEDIDO_ID_COUNTER = 1000 # Contador para gerar IDs de pedido
-MEMORIA_USUARIO = {} # Dicionário para armazenar informações do usuário durante a sessão
+# --- Variáveis Globais (agora para armazenar estados por sessão) ---
+# Dicionário para armazenar o estado de cada sessão (conversation_id da Shopee)
+# Ex: { 'conversation_id_1': { 'ATENDIMENTO_HUMANO_ATIVO': False, 'MEMORIA_USUARIO': {}, ... },
+#       'conversation_id_2': { ... } }
+SESSAO_ESTADOS = {}
+
+PEDIDO_ID_COUNTER = 1000 # Contador para gerar IDs de pedido (pode ser global, ou por loja)
 FINALIZACAO_ATENDENTE_HUMANO_FRASE = "Estou finalizando meu atendimento por aqui, se precisar de mais alguma coisa é só chamar"
-ULTIMA_INTERACAO_ATENDENTE_HUMANO = None # Para controle de 24h de inatividade
-CONVERSA_ENCAMINHADA_HUMANO = False # Novo estado para indicar que a conversa foi encaminhada
-PRIMEIRA_MENSAGEM_RECEBIDA = False # Novo estado para controlar a primeira interação do usuário
 
 # --- Funções Auxiliares ---
+
+def get_sessao_estado(sessao_id):
+    """Retorna o estado da sessão para um dado sessao_id, inicializando se necessário."""
+    if sessao_id not in SESSAO_ESTADOS:
+        SESSAO_ESTADOS[sessao_id] = {
+            'ATENDIMENTO_HUMANO_ATIVO': False,
+            'MEMORIA_USUARIO': {},
+            'ULTIMA_INTERACAO_ATENDENTE_HUMANO': None,
+            'CONVERSA_ENCAMINHADA_HUMANO': False,
+            'PRIMEIRA_MENSAGEM_RECEBIDA': False,
+        }
+    return SESSAO_ESTADOS[sessao_id]
 
 def gerar_id_pedido():
     """Gera um ID de pedido único."""
@@ -109,14 +121,15 @@ def exibir_submenu_duvidas():
 
 # --- Funções de Processamento de Fluxos ---
 
-def processar_personalizacao_nome(user_input):
+def processar_personalizacao_nome(sessao_id, user_input):
     """Gerencia o fluxo de personalização de capinha com nome."""
-    global MEMORIA_USUARIO
+    sessao = get_sessao_estado(sessao_id)
+    MEMORIA_USUARIO = sessao['MEMORIA_USUARIO']
 
     user_input_lower = user_input.lower().strip()
 
     if user_input_lower == 'voltar':
-        MEMORIA_USUARIO = {}
+        sessao['MEMORIA_USUARIO'] = {} # Limpa a memória da sessão
         return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
 
     estado = MEMORIA_USUARIO.get('personalizacao_nome_estado', 'inicio')
@@ -178,7 +191,7 @@ def processar_personalizacao_nome(user_input):
     elif estado == 'aguardando_correcao_nome':
         # O usuário está corrigindo o nome de uma capinha específica
         if user_input_lower == 'voltar':
-            MEMORIA_USUARIO = {}
+            sessao['MEMORIA_USUARIO'] = {}
             return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
 
         novo_nome = re.sub(r'^(nome\s*)', '', user_input, flags=re.IGNORECASE).strip() # Assume que o usuário está dando apenas o novo nome
@@ -222,9 +235,9 @@ def processar_personalizacao_nome(user_input):
             for item in MEMORIA_USUARIO['detalhes_personalizacao_nome']:
                 salvar_personalizacao_nome_txt(item['nome'], pedido_id, item['modelo'])
 
-            MEMORIA_USUARIO = {} # Limpa a memória após a conclusão do fluxo
-            MEMORIA_USUARIO['personalizacao_nome_concluida_recentemente'] = True # Marca que um pedido foi concluído
-            MEMORIA_USUARIO['last_action_completed'] = 'personalizacao_nome_concluida' # Novo estado para gerenciar as opções pós-confirmação
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória após a conclusão do fluxo
+            sessao['MEMORIA_USUARIO']['personalizacao_nome_concluida_recentemente'] = True # Marca que um pedido foi concluído
+            sessao['MEMORIA_USUARIO']['last_action_completed'] = 'personalizacao_nome_concluida' # Novo estado para gerenciar as opções pós-confirmação
             return (f"Ótimo! Seu pedido de personalização com nome (ID: {pedido_id}) foi registrado e será processado. "
                     "Em breve você receberá mais informações. "
                     "O que você gostaria de fazer agora?\n"
@@ -242,7 +255,7 @@ def processar_personalizacao_nome(user_input):
 
     elif estado == 'aguardando_correcao_final':
         if user_input_lower == 'voltar':
-            MEMORIA_USUARIO = {}
+            sessao['MEMORIA_USUARIO'] = {}
             return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
 
         # Tenta extrair o número da capinha e o nome
@@ -295,14 +308,15 @@ def processar_personalizacao_nome(user_input):
 
     return "Desculpe, não entendi. Por favor, digite 'Voltar' para o menu principal."
 
-def processar_personalizacao_foto(user_input):
+def processar_personalizacao_foto(sessao_id, user_input):
     """Gerencia o fluxo de personalização de capinha com foto."""
-    global MEMORIA_USUARIO
+    sessao = get_sessao_estado(sessao_id)
+    MEMORIA_USUARIO = sessao['MEMORIA_USUARIO']
 
     user_input_lower = user_input.lower().strip()
 
     if user_input_lower == 'voltar':
-        MEMORIA_USUARIO = {}
+        sessao['MEMORIA_USUARIO'] = {}
         return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
 
     estado = MEMORIA_USUARIO.get('personalizacao_foto_estado', 'inicio')
@@ -368,8 +382,8 @@ def processar_personalizacao_foto(user_input):
             for item in MEMORIA_USUARIO['detalhes_personalizacao_foto']:
                 salvar_personalizacao_foto_txt(item['tema'], item['nome_arquivo_foto'], pedido_id)
 
-            MEMORIA_USUARIO = {} # Limpa a memória após a conclusão
-            MEMORIA_USUARIO['last_action_completed'] = 'personalizacao_foto_concluida' # Novo estado para gerenciar as opções pós-confirmação
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória após a conclusão
+            sessao['MEMORIA_USUARIO']['last_action_completed'] = 'personalizacao_foto_concluida' # Novo estado para gerenciar as opções pós-confirmação
             return (f"Ótimo! Seu pedido de personalização com foto (ID: {pedido_id}) foi registrado e será processado. "
                     "Caso haja alguma irregularidade na foto, um atendente humano entrará em contato para resolver. "
                     "O que você gostaria de fazer agora?\n"
@@ -388,7 +402,7 @@ def processar_personalizacao_foto(user_input):
 
     elif estado == 'aguardando_correcao_final':
         if user_input_lower == 'voltar':
-            MEMORIA_USUARIO = {}
+            sessao['MEMORIA_USUARIO'] = {}
             return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
 
         partes = [p.strip() for p in user_input.split(',', 2)] # Divide em até 3 partes
@@ -421,14 +435,15 @@ def processar_personalizacao_foto(user_input):
 
     return "Desculpe, não entendi. Por favor, digite 'Voltar' para o menu principal."
 
-def processar_consulta_capinha(user_input):
+def processar_consulta_capinha(sessao_id, user_input):
     """Gerencia o fluxo de consulta de capinhas."""
-    global MEMORIA_USUARIO, ATENDIMENTO_HUMANO_ATIVO, CONVERSA_ENCAMINHADA_HUMANO
+    sessao = get_sessao_estado(sessao_id)
+    MEMORIA_USUARIO = sessao['MEMORIA_USUARIO']
 
     user_input_lower = user_input.lower().strip()
 
     if user_input_lower == 'voltar':
-        MEMORIA_USUARIO = {}
+        sessao['MEMORIA_USUARIO'] = {}
         return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
 
     estado = MEMORIA_USUARIO.get('consulta_capinha_estado', 'inicio')
@@ -445,8 +460,8 @@ def processar_consulta_capinha(user_input):
         MEMORIA_USUARIO['modelo_tema_consultado'] = modelo_tema_consultado
 
         # Encaminha para atendimento humano
-        ATENDIMENTO_HUMANO_ATIVO = True
-        CONVERSA_ENCAMINHADA_HUMANO = True
+        sessao['ATENDIMENTO_HUMANO_ATIVO'] = True
+        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = True
         MEMORIA_USUARIO['consulta_capinha_estado'] = 'encaminhado_humano' # Marca o estado para não responder mais
         return get_resposta_regra("TRANSFERENCIA_OFERECER")
 
@@ -457,9 +472,10 @@ def processar_consulta_capinha(user_input):
 
     return "Desculpe, não entendi. Por favor, digite 'Voltar' para o menu principal."
 
-def processar_devolucao_reembolso(user_input):
+def processar_devolucao_reembolso(sessao_id, user_input):
     """Processa a solicitação de devolução/reembolso."""
-    global MEMORIA_USUARIO
+    sessao = get_sessao_estado(sessao_id)
+    MEMORIA_USUARIO = sessao['MEMORIA_USUARIO']
     # A limpeza da memória e o retorno ao menu principal/saída serão tratados na assistente_virtual_bot
     # para permitir que 'last_flow_options' seja lido.
     return (get_resposta_regra("ERRO_LOJA_SCRIPT") + "\n" +
@@ -467,14 +483,15 @@ def processar_devolucao_reembolso(user_input):
             "1 - Voltar ao menu principal\n"
             "2 - Sair do atendimento")
 
-def processar_duvidas_informacoes(user_input):
+def processar_duvidas_informacoes(sessao_id, user_input):
     """Gerencia o fluxo do submenu de dúvidas e informações."""
-    global MEMORIA_USUARIO, ATENDIMENTO_HUMANO_ATIVO, CONVERSA_ENCAMINHADA_HUMANO
+    sessao = get_sessao_estado(sessao_id)
+    MEMORIA_USUARIO = sessao['MEMORIA_USUARIO']
 
     user_input_lower = user_input.lower().strip()
 
     if user_input_lower == 'voltar':
-        MEMORIA_USUARIO = {}
+        sessao['MEMORIA_USUARIO'] = {}
         return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
 
     estado = MEMORIA_USUARIO.get('duvidas_estado', 'inicio')
@@ -505,12 +522,12 @@ def processar_duvidas_informacoes(user_input):
         elif user_input_lower == '10':
             resposta = get_resposta_regra("CUPOM_DESCONTO")
         elif user_input_lower == '11': # Voltar ao menu principal
-            MEMORIA_USUARIO = {}
+            sessao['MEMORIA_USUARIO'] = {}
             return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
         elif user_input_lower == '12': # Falar com atendimento Humano
-            ATENDIMENTO_HUMANO_ATIVO = True
-            CONVERSA_ENCAMINHADA_HUMANO = True
-            MEMORIA_USUARIO = {} # Limpa a memória para o atendente humano
+            sessao['ATENDIMENTO_HUMANO_ATIVO'] = True
+            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = True
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória para o atendente humano
             return get_resposta_regra("TRANSFERENCIA_OFERECER")
         else:
             return get_resposta_regra("RESPOSTA_FORA_MENU") + "\n" + exibir_menu_principal()
@@ -523,13 +540,13 @@ def processar_duvidas_informacoes(user_input):
 
     elif estado == 'apos_resposta_duvida':
         if user_input_lower == '1': # Voltar ao menu principal
-            MEMORIA_USUARIO = {}
+            sessao['MEMORIA_USUARIO'] = {}
             return "Entendido. Voltando ao menu principal.\n" + exibir_menu_principal()
         elif user_input_lower == '2': # Fazer outra pergunta (voltar ao submenu de dúvidas)
             MEMORIA_USUARIO['duvidas_estado'] = 'aguardando_opcao_submenu'
             return exibir_submenu_duvidas() + " (Ou digite 'Voltar' para o menu principal)"
         elif user_input_lower == '3': # Sair do atendimento
-            MEMORIA_USUARIO = {}
+            sessao['MEMORIA_USUARIO'] = {}
             return get_resposta_regra("SAIR_ATENDIMENTO")
         else:
             return ("Desculpe, não entendi sua escolha. Por favor, selecione uma das opções numeradas:\n"
@@ -539,46 +556,72 @@ def processar_duvidas_informacoes(user_input):
 
     return "Desculpe, não entendi. Por favor, digite 'Voltar' para o menu principal."
 
-def assistente_virtual_bot(user_input):
-    """Função principal da assistente virtual."""
-    global ATENDIMENTO_HUMANO_ATIVO, ULTIMA_INTERACAO_ATENDENTE_HUMANO, MEMORIA_USUARIO, CONVERSA_ENCAMINHADA_HUMANO, PRIMEIRA_MENSAGEM_RECEBIDA
+def assistente_virtual_bot(sessao_id, user_input):
+    """
+    Função principal para processar mensagens da assistente virtual,
+    agora gerenciando o estado da sessão.
+    """
+    sessao = get_sessao_estado(sessao_id)
+    MEMORIA_USUARIO = sessao['MEMORIA_USUARIO']
+    ATENDIMENTO_HUMANO_ATIVO = sessao['ATENDIMENTO_HUMANO_ATIVO']
+    ULTIMA_INTERACAO_ATENDENTE_HUMANO = sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO']
+    CONVERSA_ENCAMINHADA_HUMANO = sessao['CONVERSA_ENCAMINHADA_HUMANO']
+    PRIMEIRA_MENSAGEM_RECEBIDA = sessao['PRIMEIRA_MENSAGEM_RECEBIDA']
 
     user_input_lower = user_input.lower().strip()
+    resposta_bot = None
 
     # --- Lógica de Início de Conversa ---
     if not PRIMEIRA_MENSAGEM_RECEBIDA:
-        PRIMEIRA_MENSAGEM_RECEBIDA = True
-        # A assistente responde com a saudação e o menu principal apenas na primeira mensagem do usuário
-        return exibir_saudacao_inicial() + "\n" + exibir_menu_principal()
+        sessao['PRIMEIRA_MENSAGEM_RECEBIDA'] = True
+        resposta_bot = exibir_saudacao_inicial() + "\n" + exibir_menu_principal()
+        # Atualiza o estado da sessão
+        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+        return resposta_bot
 
     # --- Lógica de Atendimento Humano ---
     if ATENDIMENTO_HUMANO_ATIVO:
         # Se o atendente humano enviou a frase de finalização
         if user_input.strip() == FINALIZACAO_ATENDENTE_HUMANO_FRASE:
-            ATENDIMENTO_HUMANO_ATIVO = False
-            CONVERSA_ENCAMINHADA_HUMANO = False
-            ULTIMA_INTERACAO_ATENDENTE_HUMANO = datetime.datetime.now() # Marca o tempo da finalização
+            sessao['ATENDIMENTO_HUMANO_ATIVO'] = False
+            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = False
+            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = datetime.datetime.now() # Marca o tempo da finalização
+            # Atualiza o estado da sessão
+            sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
             return None # A assistente não responde, apenas desativa o modo humano
 
         # Se o cliente quer cancelar o atendimento humano
         if user_input_lower == 'cancelar atendimento humano':
-            ATENDIMENTO_HUMANO_ATIVO = False
-            CONVERSA_ENCAMINHADA_HUMANO = False
-            MEMORIA_USUARIO = {} # Limpa a memória para recomeçar com a assistente
-            return get_resposta_regra("CANCELAR_ATENDIMENTO_HUMANO") + "\n" + exibir_menu_principal()
+            sessao['ATENDIMENTO_HUMANO_ATIVO'] = False
+            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = False
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória para recomeçar com a assistente
+            resposta_bot = get_resposta_regra("CANCELAR_ATENDIMENTO_HUMANO") + "\n" + exibir_menu_principal()
+            # Atualiza o estado da sessão
+            sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+            return resposta_bot
 
         # Se a conversa foi encaminhada e o atendente humano ainda não finalizou,
         # a assistente fica em modo de espera total, não respondendo proativamente.
         # O bot não deve responder nada aqui, pois o atendente está no controle.
         if CONVERSA_ENCAMINHADA_HUMANO:
-            return get_resposta_regra("ATENDIMENTO_HUMANO_ATIVO_MSG") # Responde com a frase fixa
+            # Atualiza o estado da sessão
+            sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+            sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+            return None # O bot fica em silêncio, esperando o humano ou o cancelamento
 
     # --- Retomada da Assistente Virtual após 24h de inatividade do atendente humano ---
     # Esta lógica só se aplica se o atendimento humano foi finalizado (ULTIMA_INTERACAO_ATENDENTE_HUMANO não é None)
     # E se o atendente NÃO enviou a frase de finalização.
     if ULTIMA_INTERACAO_ATENDENTE_HUMANO and not ATENDIMENTO_HUMANO_ATIVO:
         if (datetime.datetime.now() - ULTIMA_INTERACAO_ATENDENTE_HUMANO).total_seconds() > 24 * 3600: # 24 horas
-            ULTIMA_INTERACAO_ATENDENTE_HUMANO = None # Reseta o timer
+            sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = None # Reseta o timer
             # A assistente está pronta para responder normalmente na próxima interação do usuário.
         else:
             # Se ainda não passou 24h desde a última interação do atendente (sem a frase de finalização),
@@ -588,38 +631,53 @@ def assistente_virtual_bot(user_input):
 
     # --- Detecção de Intenção para Atendimento Humano (fora de um fluxo específico) ---
     if user_input_lower == 'falar com atendimento humano' or user_input_lower == 'falar com atendente':
-        ATENDIMENTO_HUMANO_ATIVO = True
-        CONVERSA_ENCAMINHADA_HUMANO = True # Marca que a conversa foi encaminhada
-        MEMORIA_USUARIO = {} # Limpa a memória para o atendente humano
-        return get_resposta_regra("TRANSFERENCIA_OFERECER")
+        sessao['ATENDIMENTO_HUMANO_ATIVO'] = True
+        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = True # Marca que a conversa foi encaminhada
+        sessao['MEMORIA_USUARIO'] = {} # Limpa a memória para o atendente humano
+        resposta_bot = get_resposta_regra("TRANSFERENCIA_OFERECER")
+        # Atualiza o estado da sessão
+        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+        return resposta_bot
 
     # --- Processamento de Opções Pós-Conclusão de Fluxo (Novo) ---
     # Este bloco deve vir ANTES do processamento de fluxos ativos e do menu principal
     if MEMORIA_USUARIO.get('last_action_completed') == 'personalizacao_nome_concluida':
         if user_input_lower == '1': # Voltar ao menu principal
-            MEMORIA_USUARIO = {} # Limpa toda a memória para um novo início
-            return exibir_menu_principal()
+            sessao['MEMORIA_USUARIO'] = {} # Limpa toda a memória para um novo início
+            resposta_bot = exibir_menu_principal()
         elif user_input_lower == '2': # Sair do atendimento
-            MEMORIA_USUARIO = {} # Limpa a memória
-            return get_resposta_regra("SAIR_ATENDIMENTO")
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória
+            resposta_bot = get_resposta_regra("SAIR_ATENDIMENTO")
         else:
             # Se o usuário digitou algo diferente de 1 ou 2, reexibe as opções
-            return ("Desculpe, não entendi sua escolha. Por favor, selecione uma das opções numeradas:\n"
+            resposta_bot = ("Desculpe, não entendi sua escolha. Por favor, selecione uma das opções numeradas:\n"
                     "1 - Voltar ao menu principal\n"
                     "2 - Sair do atendimento")
+        # Atualiza o estado da sessão
+        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+        return resposta_bot
 
     if MEMORIA_USUARIO.get('last_action_completed') == 'personalizacao_foto_concluida':
         if user_input_lower == '1': # Voltar ao menu principal
-            MEMORIA_USUARIO = {} # Limpa toda a memória para um novo início
-            return exibir_menu_principal()
+            sessao['MEMORIA_USUARIO'] = {} # Limpa toda a memória para um novo início
+            resposta_bot = exibir_menu_principal()
         elif user_input_lower == '2': # Sair do atendimento
-            MEMORIA_USUARIO = {} # Limpa a memória
-            return get_resposta_regra("SAIR_ATENDIMENTO")
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória
+            resposta_bot = get_resposta_regra("SAIR_ATENDIMENTO")
         else:
             # Se o usuário digitou algo diferente de 1 ou 2, reexibe as opções
-            return ("Desculpe, não entendi sua escolha. Por favor, selecione uma das opções numeradas:\n"
+            resposta_bot = ("Desculpe, não entendi sua escolha. Por favor, selecione uma das opções numeradas:\n"
                     "1 - Voltar ao menu principal\n"
                     "2 - Sair do atendimento")
+        # Atualiza o estado da sessão
+        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+        return resposta_bot
 
     # --- Processamento de Fluxos Ativos ---
     # Se o estado 'last_flow_options' está definido e o input é '1' ou '2',
@@ -627,90 +685,105 @@ def assistente_virtual_bot(user_input):
     # após um fluxo como Devolução/Reembolso.
     if MEMORIA_USUARIO.get('last_flow_options') == 'devolucao_reembolso':
         if user_input_lower == '1':
-            MEMORIA_USUARIO = {} # Limpa a memória para garantir um novo início
-            return exibir_menu_principal()
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória para garantir um novo início
+            resposta_bot = exibir_menu_principal()
         elif user_input_lower == '2':
-            MEMORIA_USUARIO = {} # Limpa a memória
-            return get_resposta_regra("SAIR_ATENDIMENTO")
-        return processar_devolucao_reembolso(user_input) # Reprocessa para exibir as opções novamente
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória
+            resposta_bot = get_resposta_regra("SAIR_ATENDIMENTO")
+        else:
+            resposta_bot = processar_devolucao_reembolso(sessao_id, user_input) # Reprocessa para exibir as opções novamente
+        # Atualiza o estado da sessão
+        sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+        sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+        sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+        return resposta_bot
 
     if 'personalizacao_nome_estado' in MEMORIA_USUARIO:
-        return processar_personalizacao_nome(user_input)
+        resposta_bot = processar_personalizacao_nome(sessao_id, user_input)
     elif 'personalizacao_foto_estado' in MEMORIA_USUARIO:
-        return processar_personalizacao_foto(user_input)
+        resposta_bot = processar_personalizacao_foto(sessao_id, user_input)
     elif 'consulta_capinha_estado' in MEMORIA_USUARIO:
-        return processar_consulta_capinha(user_input)
+        resposta_bot = processar_consulta_capinha(sessao_id, user_input)
     elif 'duvidas_estado' in MEMORIA_USUARIO:
-        return processar_duvidas_informacoes(user_input)
-
-    # --- Processa as opções do menu principal ---
-    if user_input_lower == '1':
-        # Trava para reenvio de nome (Novo)
-        if MEMORIA_USUARIO.get('personalizacao_nome_concluida_recentemente'):
-            return get_resposta_regra("PEDIDO_NOME_JA_ENVIADO")
-        return processar_personalizacao_nome(user_input)
-    elif user_input_lower == '2':
-        return processar_personalizacao_foto(user_input)
-    elif user_input_lower == '3':
-        return processar_consulta_capinha(user_input)
-    elif user_input_lower == '4':
-        # Define o last_flow_options ANTES de chamar a função
-        MEMORIA_USUARIO['last_flow_options'] = 'devolucao_reembolso'
-        return processar_devolucao_reembolso(user_input)
-    elif user_input_lower == '5':
-        return processar_duvidas_informacoes(user_input)
-    elif user_input_lower == '6' or user_input_lower == 'sair':
-        MEMORIA_USUARIO = {} # Limpa a memória ao sair
-        return get_resposta_regra("SAIR_ATENDIMENTO")
-    elif user_input_lower == 'menu' or user_input_lower == 'menu principal':
-        return exibir_menu_principal()
-    elif user_input_lower == 'olá' or user_input_lower == 'oi' or user_input_lower == 'tudo bem':
-        # Se for uma saudação e já passou da primeira mensagem, apenas exibe o menu
-        return exibir_menu_principal()
-    elif user_input_lower == 'obrigado' or user_input_lower == 'obrigada':
-        return "De nada, Alex! Fico feliz em ajudar. Você gostaria de fazer mais alguma coisa ou tem alguma outra dúvida?"
-    elif "reembolso" in user_input_lower or "devolução" in user_input_lower or "dinheiro de volta" in user_input_lower:
-        # Define o last_flow_options ANTES de chamar a função
-        MEMORIA_USUARIO['last_flow_options'] = 'devolucao_reembolso'
-        return processar_devolucao_reembolso(user_input)
-    elif "prazo de envio" in user_input_lower or "recebimento do pedido" in user_input_lower:
-        return get_resposta_regra("LOGISTICA_ATRASO") + "\n" + exibir_menu_principal()
-    elif "comprei errado" in user_input_lower or "preciso alterar" in user_input_lower:
-        return get_resposta_regra("COMPRA_INCORRETA") + "\n" + exibir_menu_principal()
-    elif "formas de pagamento" in user_input_lower or "pagamento" in user_input_lower:
-        return get_resposta_regra("PAGAMENTO_COMPLETO") + "\n" + exibir_menu_principal()
-    elif "ver minha capinha" in user_input_lower or "aprovar antes do envio" in user_input_lower:
-        return get_resposta_regra("APROVACAO_VER_CAPINHA") + "\n" + exibir_menu_principal()
-    elif "imagens do anuncio" in user_input_lower or "diferentes do meu modelo" in user_input_lower:
-        return get_resposta_regra("IMAGENS_ILUSTRATIVAS") + "\n" + exibir_menu_principal()
-    elif "não sei meu modelo de celular" in user_input_lower or "nao sei meu modelo" in user_input_lower:
-        return get_resposta_regra("MODELO_DESCONHECIDO") + "\n" + exibir_menu_principal()
-    elif "mudar o tipo de letra" in user_input_lower or "alterar fonte" in user_input_lower:
-        return get_resposta_regra("ALTERAR_FONTE_LETRA") + "\n" + exibir_menu_principal()
-    elif "capinha possui proteção" in user_input_lower or "proteção da capinha" in user_input_lower:
-        return get_resposta_regra("CAPINHA_PROTECAO") + "\n" + exibir_menu_principal()
-    elif "capinha amarela" in user_input_lower or "amarela com o tempo" in user_input_lower:
-        return get_resposta_regra("CAPINHA_AMARELA") + "\n" + exibir_menu_principal()
-    elif "cupom de desconto" in user_input_lower or "promoção" in user_input_lower:
-        return get_resposta_regra("CUPOM_DESCONTO") + "\n" + exibir_menu_principal()
+        resposta_bot = processar_duvidas_informacoes(sessao_id, user_input)
     else:
-        # Se não for uma opção do menu e não houver fluxo ativo, exibe a mensagem de fora do menu
-        # e o menu principal.
-        MEMORIA_USUARIO = {} # Limpa a memória para garantir que o menu principal seja exibido
-        return get_resposta_regra("RESPOSTA_FORA_MENU") + "\n" + exibir_menu_principal()
+        # --- Processa as opções do menu principal ---
+        if user_input_lower == '1':
+            # Trava para reenvio de nome (Novo)
+            if MEMORIA_USUARIO.get('personalizacao_nome_concluida_recentemente'):
+                resposta_bot = get_resposta_regra("PEDIDO_NOME_JA_ENVIADO")
+            else:
+                resposta_bot = processar_personalizacao_nome(sessao_id, user_input)
+        elif user_input_lower == '2':
+            resposta_bot = processar_personalizacao_foto(sessao_id, user_input)
+        elif user_input_lower == '3':
+            resposta_bot = processar_consulta_capinha(sessao_id, user_input)
+        elif user_input_lower == '4':
+            # Define o last_flow_options ANTES de chamar a função
+            MEMORIA_USUARIO['last_flow_options'] = 'devolucao_reembolso'
+            resposta_bot = processar_devolucao_reembolso(sessao_id, user_input)
+        elif user_input_lower == '5':
+            resposta_bot = processar_duvidas_informacoes(sessao_id, user_input)
+        elif user_input_lower == '6' or user_input_lower == 'sair':
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória ao sair
+            resposta_bot = get_resposta_regra("SAIR_ATENDIMENTO")
+        elif user_input_lower == 'menu' or user_input_lower == 'menu principal':
+            resposta_bot = exibir_menu_principal()
+        elif user_input_lower == 'olá' or user_input_lower == 'oi' or user_input_lower == 'tudo bem':
+            # Se for uma saudação e já passou da primeira mensagem, apenas exibe o menu
+            resposta_bot = exibir_menu_principal()
+        elif user_input_lower == 'obrigado' or user_input_lower == 'obrigada':
+            resposta_bot = "De nada, Alex! Fico feliz em ajudar. Você gostaria de fazer mais alguma coisa ou tem alguma outra dúvida?"
+        elif "reembolso" in user_input_lower or "devolução" in user_input_lower or "dinheiro de volta" in user_input_lower:
+            # Define o last_flow_options ANTES de chamar a função
+            MEMORIA_USUARIO['last_flow_options'] = 'devolucao_reembolso'
+            resposta_bot = processar_devolucao_reembolso(sessao_id, user_input)
+        elif "prazo de envio" in user_input_lower or "recebimento do pedido" in user_input_lower:
+            resposta_bot = get_resposta_regra("LOGISTICA_ATRASO") + "\n" + exibir_menu_principal()
+        elif "comprei errado" in user_input_lower or "preciso alterar" in user_input_lower:
+            resposta_bot = get_resposta_regra("COMPRA_INCORRETA") + "\n" + exibir_menu_principal()
+        elif "formas de pagamento" in user_input_lower or "pagamento" in user_input_lower:
+            resposta_bot = get_resposta_regra("PAGAMENTO_COMPLETO") + "\n" + exibir_menu_principal()
+        elif "ver minha capinha" in user_input_lower or "aprovar antes do envio" in user_input_lower:
+            resposta_bot = get_resposta_regra("APROVACAO_VER_CAPINHA") + "\n" + exibir_menu_principal()
+        elif "imagens do anuncio" in user_input_lower or "diferentes do meu modelo" in user_input_lower:
+            resposta_bot = get_resposta_regra("IMAGENS_ILUSTRATIVAS") + "\n" + exibir_menu_principal()
+        elif "não sei meu modelo de celular" in user_input_lower or "nao sei meu modelo" in user_input_lower:
+            resposta_bot = get_resposta_regra("MODELO_DESCONHECIDO") + "\n" + exibir_menu_principal()
+        elif "mudar o tipo de letra" in user_input_lower or "alterar fonte" in user_input_lower:
+            resposta_bot = get_resposta_regra("ALTERAR_FONTE_LETRA") + "\n" + exibir_menu_principal()
+        elif "capinha possui proteção" in user_input_lower or "proteção da capinha" in user_input_lower:
+            resposta_bot = get_resposta_regra("CAPINHA_PROTECAO") + "\n" + exibir_menu_principal()
+        elif "capinha amarela" in user_input_lower or "amarela com o tempo" in user_input_lower:
+            resposta_bot = get_resposta_regra("CAPINHA_AMARELA") + "\n" + exibir_menu_principal()
+        elif "cupom de desconto" in user_input_lower or "promoção" in user_input_lower:
+            resposta_bot = get_resposta_regra("CUPOM_DESCONTO") + "\n" + exibir_menu_principal()
+        else:
+            # Se não for uma opção do menu e não houver fluxo ativo, exibe a mensagem de fora do menu
+            # e o menu principal.
+            sessao['MEMORIA_USUARIO'] = {} # Limpa a memória para garantir que o menu principal seja exibido
+            resposta_bot = get_resposta_regra("RESPOSTA_FORA_MENU") + "\n" + exibir_menu_principal()
+
+    # Atualiza o estado da sessão com as flags de atendimento humano
+    sessao['ATENDIMENTO_HUMANO_ATIVO'] = ATENDIMENTO_HUMANO_ATIVO
+    sessao['ULTIMA_INTERACAO_ATENDENTE_HUMANO'] = ULTIMA_INTERACAO_ATENDENTE_HUMANO
+    sessao['CONVERSA_ENCAMINHADA_HUMANO'] = CONVERSA_ENCAMINHADA_HUMANO
+
+    return resposta_bot
 
 # --- Simulação de Interação (para testes) ---
 if __name__ == "__main__":
     # A assistente não imprime nada no início, espera a primeira mensagem do usuário
     print("Inicie a conversa...")
+    test_sessao_id = "test_user_123" # Usar um ID de sessão fixo para testes locais
     while True:
         user_input = input("Você: ")
         if user_input.lower() == 'sair':
-            response = assistente_virtual_bot(user_input)
+            response = assistente_virtual_bot(test_sessao_id, user_input)
             if response:
                 print(f"Assistente Virtual: {response}")
             break
-        response = assistente_virtual_bot(user_input)
+        response = assistente_virtual_bot(test_sessao_id, user_input)
         if response is not None: # A assistente só responde se não estiver em modo de espera total
             print(f"Assistente Virtual: {response}")
             if "Tenha um ótimo dia!" in response:
