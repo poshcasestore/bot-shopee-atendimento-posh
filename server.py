@@ -24,9 +24,7 @@ load_dotenv()
 # -------------------------------------------------
 # CORREÇÃO: O arquivo de lógica do bot foi ajustado para **bot_logic.py**
 from bot_logic import (
-    assistente_virtual_bot, # <-- Esta função precisa ser ajustada para receber sessao_id e user_input
-    ATENDIMENTO_HUMANO_ATIVO, # <-- Estas variáveis globais precisam ser gerenciadas por sessão
-    CONVERSA_ENCAMINHADA_HUMANO, # <-- Estas variáveis globais precisam ser gerenciadas por sessão
+    processar_mensagem_shopee, # <-- Nova função para processar a mensagem com o sessao_id
     get_resposta_regra,
 )
 
@@ -196,7 +194,6 @@ def shopee_webhook():
         return "Webhook URL verified", 200
 
     # Se for POST, processa o webhook real
-    # Tenta ler o JSON, mesmo que o Content-Type não esteja perfeito
     data = request.get_json(force=True, silent=True)
 
     if not data:
@@ -241,26 +238,10 @@ def shopee_webhook():
         sessao_id = str(conversation_id)
 
         # -------------------------------------------------
-        # Verifica se a conversa já foi encaminhada para atendimento humano
-        # -------------------------------------------------
-        # CORREÇÃO: A variável CONVERSA_ENCAMINHADA_HUMANO é um dicionário,
-        # então precisamos passar o sessao_id como chave.
-        if CONVERSA_ENCAMINHADA_HUMANO.get(sessao_id, False):
-            # Se já foi encaminhada, o bot não responde mais, apenas marca como não lida
-            print(f"Conversa {sessao_id} já encaminhada para humano. Marcando como não lida.")
-            mark_shopee_message_unread(shop_id, conversation_id)
-            return jsonify({"message": "Conversa já encaminhada para humano, marcada como não lida."}), 200
-
-        # -------------------------------------------------
         # Processa a mensagem com a lógica do seu bot
         # -------------------------------------------------
-        # CORREÇÃO: A função assistente_virtual_bot agora aceita apenas user_input.
-        # A lógica de sessão é gerenciada internamente pelo bot_logic.py.
-        # Mas como você ainda está usando variáveis globais no bot_logic.py,
-        # vamos manter a chamada com sessao_id e user_input por enquanto,
-        # e faremos a correção do bot_logic.py para gerenciar o estado por sessão.
-        resposta_bot = assistente_virtual_bot(sessao_id, message_content) # <-- MANTIDO POR ENQUANTO, SERÁ AJUSTADO COM bot_logic.py
-
+        # --- CORREÇÃO AQUI: Chama a nova função processar_mensagem_shopee ---
+        resposta_bot, encaminhado_humano = processar_mensagem_shopee(sessao_id, message_content)
         print(f"Resposta do bot para {sessao_id}: {resposta_bot}")
 
         # Envia a resposta de volta para a Shopee
@@ -270,10 +251,8 @@ def shopee_webhook():
         # -------------------------------------------------
         # Verifica se a resposta do bot indica transferência para humano
         # -------------------------------------------------
-        # CORREÇÃO: A lógica de transferência para humano deve ser baseada no estado global
-        # CONVERSA_ENCAMINHADA_HUMANO que é atualizado dentro de bot_logic.py.
-        # Não precisamos mais verificar a frase na resposta do bot aqui.
-        if CONVERSA_ENCAMINHADA_HUMANO.get(sessao_id, False):
+        # A lógica de encaminhamento para humano agora é retornada pela função do bot
+        if encaminhado_humano:
             print(f"Bot indicou transferência para humano na sessão {sessao_id}. Marcando como não lida.")
             mark_shopee_message_unread(shop_id, conversation_id)   # Marca a conversa como não lida
 
