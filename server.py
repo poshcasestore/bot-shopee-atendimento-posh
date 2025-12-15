@@ -22,10 +22,8 @@ load_dotenv()
 # -------------------------------------------------
 # Importa a lógica principal do seu bot
 # -------------------------------------------------
-# ATENÇÃO: O arquivo que contém a lógica do bot foi ajustado para **bot_v14.py**
-# Se você já renomeou seu arquivo para `bot_logic.py`, ajuste o import abaixo
-# para `from bot_logic import (...)`
-from bot_v14 import (  # <-- ATENÇÃO: Verifique se o nome do seu arquivo é `bot_v14.py` ou `bot_logic.py`
+# CORREÇÃO: O arquivo de lógica do bot foi ajustado para **bot_logic.py**
+from bot_logic import (  # <-- LINHA CORRIGIDA AQUI!
     assistente_virtual_bot,
     ATENDIMENTO_HUMANO_ATIVO,
     CONVERSA_ENCAMINHADA_HUMANO,
@@ -191,7 +189,7 @@ def home():
     return "Bot Shopee Atendimento Posh está online!", 200
 
 
-@app.route('/shopee/webhook', methods=['GET', 'POST']) # Adicionado GET para verificação da Shopee
+@app.route('/shopee/webhook', methods=['GET', 'POST'])
 def shopee_webhook():
     """Endpoint para receber webhooks de mensagens da Shopee."""
     if request.method == 'GET':
