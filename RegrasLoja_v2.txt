@@ -1,0 +1,137 @@
+✔ ERRO_LOJA_SCRIPT
+RESPOSTA:
+Compreendemos o transtorno e Lamentamos o ocorrido. Para garantir que o estorno do valor de sua compra seja processado rapidamente, pedimos a gentileza de iniciar o processo de devolução selecionando a opção "Mud@nça de ideia". Esta escolha é importante para agilizar o reembolso e garantir que você receba o valor em poucos dias.
+Se precisar de ajuda, digite "Falar com atendimento humano".
+----------------------------------------------------------------------
+
+✔ PERSONALIZAR_CAPINHA
+RESPOSTA:
+A sua personalização será com **NOME** ou com **FOTO**? 🤔
+----------------------------------------------------------------------
+
+✔ LOGISTICA_ATRASO
+RESPOSTA:
+O prazo de envio é de 1 dia útil após a confirmação do pagamento do pedido!
+😊 Já o prazo de entrega fica visível dentro da página do seu pedido.
+É só checar lá para saber a data estimada! A logística (transporte e prazo) é gerenciada 100% pela própria Shopee.😉
+----------------------------------------------------------------------
+
+✔ COMPRA_INCORRETA
+RESPOSTA:
+Para garantir que seu pedido seja enviado e chegue corretamente, se houve algum engano na compra, por favor, cancele este pedido imediatamente e refaça-o com as informações desejadas. Se precisar de ajuda, digite "Falar com atendimento humano".
+----------------------------------------------------------------------
+
+✔ PAGAMENTO_COMPLETO
+RESPOSTA:
+Aceitamos diversas formas de pagamento para sua comodidade: Cartão de Crédito (Visa, Mastercard, Elo, American Express, Hipercard), Boleto Bancário e Pix. Você pode escolher a opção que melhor se adapta a você no momento da finalização da compra.
+----------------------------------------------------------------------
+
+✔ APROVACAO_VER_CAPINHA
+RESPOSTA:
+Entendo seu desejo de conferir, mas não disponibilizamos a prévia para aprovação, pois priorizamos um processo de fabricação ágil. Mas pode ficar tranquilo(a)! Nossos designers aplicam a arte com atenção total às especificações do seu pedido.
+----------------------------------------------------------------------
+
+✔ IMAGENS_ILUSTRATIVAS
+RESPOSTA:
+As imagens dos anúncios são ilustrativas para apresentar o design da capinha. Enviamos sempre a capinha no modelo exato do celular que aparece no título do anúncio. 😊
+----------------------------------------------------------------------
+
+✔ MODELO_DESCONHECIDO
+RESPOSTA:
+Para descobrir o medelo de seu aparelho é muito simples!
+Aqui está o passo a passo:
+
+📱 Android (Geral)
+1. Vá para Configurações (o ícone de engrenagem ⚙️).
+2. Role para baixo e toque em Sobre o Telefone (ou "Sistema" > "Sobre o Telefone").
+3. O Nome do Modelo (ou "Modelo do Dispositivo") estará listado ali.
+Observação: Pode haver pequenas variações no nome dependendo do fabricante (Samsung, Motorola, Xiaomi, etc.).
+
+🍏 iOS (iPhone)
+1. Vá para Ajustes (o ícone de engrenagem ⚙️).
+2. Toque em Geral.
+3. Toque em Sobre.
+4. O Nome do Modelo (ou "Nome do Modelo" e "Número do Modelo") estará listado ali.
+
+Outros Métodos Rápidos
+A) Olhe na Caixa Original: Se você ainda a tiver, o nome completo do modelo está impresso na parte de fora.
+B) Olhe Atrás do Aparelho: Alguns modelos têm o nome ou o número de modelo gravado em letras pequenas na parte traseira ou sob a tampa da bateria.
+----------------------------------------------------------------------
+
+✔ ALTERAR_FONTE_LETRA
+RESPOSTA:
+Entendemos seu desejo de alteração, mas não é possível modificar a fonte. Para garantir a agilidade e a padronização em nossa produção, trabalhamos com fontes fixas e otimizadas para cada design. Sua arte será aplicada com a qualidade e harmonia visual que você espera.
+----------------------------------------------------------------------
+
+✔ CAPINHA_PROTECAO
+RESPOSTA:
+Nossas capinhas são projetadas para oferecer proteção robusta ao seu celular. Elas são feitas com materiais de alta qualidade que absorvem impactos e protegem contra arranhões e quedas do dia a dia, mantendo seu aparelho seguro e protegido.
+----------------------------------------------------------------------
+
+✔ CAPINHA_AMARELA
+RESPOSTA:
+Nossas capinhas são fabricadas com materiais de alta qualidade que possuem tratamento anti-amarelamento. Embora nenhum material seja 100% imune ao amarelamento com o tempo e exposição a fatores como luz solar e produtos químicos, nossas capinhas são desenvolvidas para resistir a esse processo por um período significativamente maior.
+----------------------------------------------------------------------
+
+✔ CUPOM_DESCONTO
+RESPOSTA:
+Sim, frequentemente oferecemos cupons de desconto e promoções especiais! Nos siga aqui no Shopee e fique de olho em nossa loja para receber as novidades e ofertas exclusivas.
+----------------------------------------------------------------------
+
+✔ TRANSFERENCIA_OFERECER
+RESPOSTA:
+Vou passar para um atendente humano assumir a conversa e te chamar por aqui. Caso deseje cancelar basta digitar "CANCELAR ATENDIMENTO HUMANO" 😊
+----------------------------------------------------------------------
+
+✔ SAIR_ATENDIMENTO
+RESPOSTA:
+Entendido! Agradeço o seu contato. Se precisar de algo mais, pode me chamar a qualquer momento! Tenha um ótimo dia! Se tiver dúvida é só voltar a chamar.
+----------------------------------------------------------------------
+
+✔ CANCELAR_ATENDIMENTO_HUMANO
+RESPOSTA:
+Você cancelou o atendimento humano. Como posso te ajudar agora?
+----------------------------------------------------------------------
+
+✔ SAUDACAO_INICIAL
+RESPOSTA:
+Olá! Tudo bem? Eu sou sua assistente virtual. Para eu te ajudar, digite o numero da opção desejada:
+----------------------------------------------------------------------
+
+✔ MENU_PRINCIPAL
+RESPOSTA:
+Olá! Eu sou sua assistente virtual. Como posso te auxiliar hoje?
+1 - Personalizar capinha com nome
+2 - Personalizar capinha com foto
+3 - Quero consutar se tem capinha para meu modelo de celular ou com algum tema de desenho especifico
+4 - Solicitar Devolução/Reembolso
+5 - Outras Informações/Dúvidas
+6 - Sair do Antendimento
+----------------------------------------------------------------------
+
+✔ SUBMENU_DUVIDAS
+RESPOSTA:
+Claro! Qual é a sua dúvida ou sobre qual informação você gostaria de saber?
+1 - Prazo de envio e recebimento do pedido
+2 - Comprei errado e preciso alterar
+3 - Formas de pagamento
+4 - Posso ver minha capinha e aprovar antes do envio?
+5 - Porque as imagens do anuncio são diferentes do meu modelo de celular?
+6 - Não sei meu modelo de celular, e agora?
+7 - Posso mudar o tipo de letra da capinha?
+8 - A capinha possui algum tipo de proteção?
+9 - A capinha amarela com o tempo?
+10 - Vocês oferecem cupom de desconto?
+11 - Voltar ao menu principal
+12 - Falar com atendimento Humano
+
+----------------------------------------------------------------------
+
+✔ RESPOSTA_FORA_MENU
+RESPOSTA:
+Agradeço a sua mensagem, mas, para esta solicitação, eu não consigo ajudar. Minha função é guiar você pelo menu principal. Por favor, digite o número da opção desejada
+----------------------------------------------------------------------
+
+✔ PEDIDO_NOME_JA_ENVIADO
+RESPOSTA:
+Seu pedido de personalização com nome já foi registrado. Para alterar um nome já enviado, é necessário falar com um atendente humano. Se deseja prosseguir com o atendimento humano, digite "Falar com atendimento humano". Caso contrário, por favor, escolha outra opção do menu principal.
