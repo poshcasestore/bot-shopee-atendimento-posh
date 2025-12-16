@@ -120,7 +120,7 @@ def reply_shopee_message(shop_id, conversation_id, message_content):
         print(f"✅ Resposta enviada para Shopee: {response.json()}")
         return True
     except requests.exceptions.RequestException as e:
-        print(f"❌ Erro ao enviar resposta para Shopee: {e}")
+        print(f"❌ Erro ao enviar resposta para a Shopee: {e}")
         print(
             f"Resposta da Shopee: {response.text if 'response' in locals() else 'N/A'}"
         )
@@ -286,4 +286,3 @@ def oauth_callback():
         ), 200
     else:
         return "OAuth Callback: Parâmetros 'code' ou 'shop_id' ausentes.", 400
-
